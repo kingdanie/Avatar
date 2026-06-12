@@ -480,15 +480,16 @@ function renderAvatar(canvas, templateOverride) {
   }
 
   // ── 9. Name
-  fillGoldText(ctx, name, S * 0.5, S * 0.666, S * 0.040, 900, S * 0.82);
+  const textOffset = useBrushImage ? S * 0.04 : 0;
+  fillGoldText(ctx, name, S * 0.5, S * 0.666 + textOffset, S * 0.040, 900, S * 0.82);
 
   // Divider line
   ctx.save();
-  ctx.strokeStyle = goldGradient(ctx, S * 0.3, S * 0.696, S * 0.7, S * 0.696);
+  ctx.strokeStyle = goldGradient(ctx, S * 0.3, S * 0.696 + textOffset, S * 0.7, S * 0.696 + textOffset);
   ctx.lineWidth = S * 0.0015;
   ctx.beginPath();
-  ctx.moveTo(S * 0.305, S * 0.696);
-  ctx.lineTo(S * 0.695, S * 0.696);
+  ctx.moveTo(S * 0.305, S * 0.696 + textOffset);
+  ctx.lineTo(S * 0.695, S * 0.696 + textOffset);
   ctx.stroke();
   ctx.restore();
 
@@ -497,17 +498,17 @@ function renderAvatar(canvas, templateOverride) {
   ctx.textBaseline = "middle";
   ctx.font = `800 ${S * 0.024}px Manrope, Avenir Next, sans-serif`;
   ctx.fillStyle = GOLD.bright;
-  ctx.fillText("MEMBER OF", S * 0.5, S * 0.730);
+  ctx.fillText("MEMBER OF", S * 0.5, S * 0.730 + textOffset);
 
   // "THE 20"
-  fillGoldText(ctx, "THE 20", S * 0.5, S * 0.786, S * 0.072, 900, S * 0.6);
+  fillGoldText(ctx, "THE 20", S * 0.5, S * 0.786 + textOffset, S * 0.072, 900, S * 0.6);
 
   // Tagline
   ctx.fillStyle = "#e8e4dc";
   ctx.font = `600 ${S * 0.024}px Manrope, Avenir Next, sans-serif`;
-  ctx.fillText("The Leke Alder Fellows Program", S * 0.5, S * 0.840);
+  ctx.fillText("The Leke Alder Fellows Program", S * 0.5, S * 0.840 + textOffset);
   ctx.font = `600 ${S * 0.022}px Manrope, Avenir Next, sans-serif`;
-  ctx.fillText("for Kings, Priests, Masters & Creatives.", S * 0.5, S * 0.865);
+  ctx.fillText("for Kings, Priests, Masters & Creatives.", S * 0.5, S * 0.865 + textOffset);
 }
 
 function renderAll() {

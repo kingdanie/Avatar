@@ -1075,6 +1075,20 @@ html[data-theme="light"] {
   background: rgba(0, 0, 0, 0.14);
 }
 
+[data-theme="light"] .hero-copy .eyebrow,
+[data-theme="light"] .hero-copy h1,
+[data-theme="light"] .center-copy h1 {
+  background: linear-gradient(180deg, #8a6312 0%, #d9bd62 43%, #8a6312 100%);
+    font-family: "Montserrat", "Arial Black", sans-serif;
+  font-weight: 900;
+  line-height: 0.98;
+  text-transform: uppercase;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 14px 40px rgba(231, 202, 102, 0.08);
+}
+
 [data-theme="light"] .hero-copy p,
 [data-theme="light"] .center-copy p {
   color: #414651;
