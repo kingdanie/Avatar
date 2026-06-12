@@ -3,6 +3,7 @@ const state = {
   image: null,
   imageFile: null,
   name: "Alex Johnson",
+  template: "A",
   toastTimer: null,
 };
 
@@ -18,6 +19,8 @@ const els = {
   downloadButton: document.querySelector("#download-button"),
   nextButtons: [...document.querySelectorAll("[data-next]")],
   shareButtons: [...document.querySelectorAll("[data-share]")],
+  templateCards: [...document.querySelectorAll("[data-template]")],
+  thumbCanvases: [...document.querySelectorAll("[data-thumb]")],
   toast: document.querySelector(".toast"),
 };
 
@@ -31,8 +34,11 @@ const GOLD = {
 const shareCopy =
   "I just created my The 20 avatar for The Leke Alder Fellows Program for Kings, Priests, Masters & Creatives.";
 
+const logoImage = new Image();
+logoImage.src = "public/the20-logo.png";
+
 function setStep(step) {
-  const panelStep = Math.min(step, 3);
+  const panelStep = Math.min(step, 4);
   state.step = step;
   document.body.dataset.step = String(step);
 
@@ -53,6 +59,7 @@ function setStep(step) {
     }
   });
 
+  if (panelStep === 3) renderThumbs();
   renderAll();
 }
 
@@ -113,10 +120,7 @@ function loadPhoto(file) {
 function drawCover(ctx, image, x, y, width, height) {
   const sourceRatio = image.width / image.height;
   const targetRatio = width / height;
-  let sx = 0;
-  let sy = 0;
-  let sw = image.width;
-  let sh = image.height;
+  let sx = 0, sy = 0, sw = image.width, sh = image.height;
 
   if (sourceRatio > targetRatio) {
     sw = image.height * targetRatio;
@@ -130,14 +134,14 @@ function drawCover(ctx, image, x, y, width, height) {
 }
 
 function goldGradient(ctx, x1, y1, x2, y2) {
-  const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
-  gradient.addColorStop(0, "#6f4c0d");
-  gradient.addColorStop(0.18, GOLD.mid);
-  gradient.addColorStop(0.36, GOLD.bright);
-  gradient.addColorStop(0.58, "#b98720");
-  gradient.addColorStop(0.78, "#ffe88f");
-  gradient.addColorStop(1, GOLD.dark);
-  return gradient;
+  const g = ctx.createLinearGradient(x1, y1, x2, y2);
+  g.addColorStop(0,    "#5a3a08");
+  g.addColorStop(0.15, "#c9a84c");
+  g.addColorStop(0.35, GOLD.bright);
+  g.addColorStop(0.55, "#b08020");
+  g.addColorStop(0.78, "#ffe88f");
+  g.addColorStop(1,    GOLD.dark);
+  return g;
 }
 
 function fillGoldText(ctx, text, x, y, fontSize, weight, maxWidth) {
@@ -147,213 +151,325 @@ function fillGoldText(ctx, text, x, y, fontSize, weight, maxWidth) {
 
   do {
     ctx.font = `${weight} ${size}px Montserrat, Arial Black, sans-serif`;
-    if (ctx.measureText(text).width <= maxWidth || size <= 26) break;
+    if (ctx.measureText(text).width <= maxWidth || size <= 24) break;
     size -= 2;
-  } while (size > 26);
+  } while (size > 24);
 
   ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,.7)";
-  ctx.shadowBlur = 14;
-  ctx.shadowOffsetY = 5;
+  ctx.shadowColor = "rgba(0,0,0,.8)";
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetY = 4;
   ctx.fillStyle = goldGradient(ctx, x - maxWidth / 2, y - size, x + maxWidth / 2, y + size);
   ctx.fillText(text, x, y);
   ctx.restore();
 }
 
-function drawHalftone(ctx, side = "left") {
+// Halftone dot field on sides — matches template
+function drawHalftone(ctx, S, side) {
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  const originX = side === "left" ? 98 : 982;
-  const direction = side === "left" ? 1 : -1;
-  const startY = side === "left" ? 210 : 170;
-  const rows = 68;
-  const cols = 24;
 
-  for (let row = 0; row < rows; row += 1) {
-    for (let col = 0; col < cols; col += 1) {
-      const y = startY + row * 10.4;
-      const wave = Math.sin(row * 0.16) * 42;
-      const curve = Math.pow(row / rows, 1.8) * 170;
-      const x = originX + direction * (col * 8.8 + wave + curve);
-      const fade = 1 - col / cols;
-      const verticalFade = Math.sin((row / rows) * Math.PI);
-      const radius = Math.max(0.3, 2.25 * fade * verticalFade);
-      const alpha = 0.48 * fade * verticalFade;
-      ctx.fillStyle = `rgba(220, 166, 18, ${alpha})`;
+  const cols = 22;
+  const rows = 72;
+  const originX = side === "left" ? S * 0.09 : S * 0.91;
+  const dir = side === "left" ? 1 : -1;
+  const startY = S * 0.20;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const t = r / rows;
+      const y = startY + r * (S * 0.0096);
+      const wave = Math.sin(r * 0.17) * S * 0.038;
+      const curve = Math.pow(t, 1.7) * S * 0.16;
+      const x = originX + dir * (c * S * 0.008 + wave + curve);
+      const fade = 1 - c / cols;
+      const vFade = Math.sin(t * Math.PI);
+      const radius = Math.max(0.3, S * 0.0021 * fade * vFade);
+      const alpha = 0.5 * fade * vFade;
+      ctx.fillStyle = `rgba(220,166,18,${alpha})`;
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
     }
   }
+  ctx.restore();
+}
+
+// Arc runs ~300° clockwise, gap at top-left (~10 o'clock)
+// start = 230° = Math.PI*1.278,  sweep = 300° = Math.PI*1.667
+const ARC_START = Math.PI * 1.28;
+const ARC_END   = ARC_START + Math.PI * 1.67;
+
+function drawRingA(ctx, S) {
+  // Template A: thick smooth gold arc with strong glow
+  const cx = S * 0.5;
+  const cy = S * 0.43;
+  const r  = S * 0.44;
+  const grad = goldGradient(ctx, cx - r, cy - r, cx + r, cy + r);
+
+  ctx.save();
+  ctx.lineCap = "round";
+
+  // Outer soft glow pass
+  ctx.strokeStyle = "rgba(200,155,20,0.25)";
+  ctx.lineWidth   = S * 0.072;
+  ctx.shadowColor = "rgba(231,202,60,0)";
+  ctx.shadowBlur  = 0;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, ARC_START, ARC_END);
+  ctx.stroke();
+
+  // Main thick arc
+  ctx.strokeStyle = grad;
+  ctx.lineWidth   = S * 0.034;
+  ctx.shadowColor = "rgba(255,228,80,0.7)";
+  ctx.shadowBlur  = S * 0.028;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, ARC_START, ARC_END);
+  ctx.stroke();
+
+  // Bright inner highlight (centre of the stroke)
+  ctx.shadowBlur  = S * 0.01;
+  ctx.shadowColor = "rgba(255,248,180,0.9)";
+  ctx.strokeStyle = "rgba(255,248,180,0.55)";
+  ctx.lineWidth   = S * 0.01;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, ARC_START + 0.05, ARC_END - 0.05);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawRingB(ctx, S) {
+  // Template B: same thick arc + extra painted sweeps at bottom
+  const cx = S * 0.5;
+  const cy = S * 0.43;
+  const r  = S * 0.44;
+  const grad = goldGradient(ctx, cx - r, cy - r, cx + r, cy + r);
+
+  ctx.save();
+  ctx.lineCap = "round";
+
+  // Outer soft glow
+  ctx.strokeStyle = "rgba(200,155,20,0.22)";
+  ctx.lineWidth   = S * 0.072;
+  ctx.shadowBlur  = 0;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, ARC_START, ARC_END);
+  ctx.stroke();
+
+  // Main thick arc
+  ctx.strokeStyle = grad;
+  ctx.lineWidth   = S * 0.034;
+  ctx.shadowColor = "rgba(255,228,80,0.7)";
+  ctx.shadowBlur  = S * 0.028;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, ARC_START, ARC_END);
+  ctx.stroke();
+
+  // Bright inner highlight
+  ctx.shadowBlur  = S * 0.01;
+  ctx.shadowColor = "rgba(255,248,180,0.9)";
+  ctx.strokeStyle = "rgba(255,248,180,0.55)";
+  ctx.lineWidth   = S * 0.01;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, ARC_START + 0.05, ARC_END - 0.05);
+  ctx.stroke();
+
+  // Extra heavy paint sweeps at bottom — distinctive brushstroke feel
+  ctx.shadowBlur  = S * 0.018;
+  ctx.shadowColor = "rgba(231,202,102,0.6)";
+
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = grad;
+  ctx.lineWidth   = S * 0.026;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + S * 0.01, Math.PI * 1.28, Math.PI * 1.62);
+  ctx.stroke();
+
+  ctx.globalAlpha = 0.75;
+  ctx.lineWidth   = S * 0.018;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + S * 0.024, Math.PI * 1.58, Math.PI * 1.85);
+  ctx.stroke();
+
+  ctx.globalAlpha = 0.45;
+  ctx.lineWidth   = S * 0.011;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + S * 0.036, Math.PI * 1.80, Math.PI * 2.04);
+  ctx.stroke();
 
   ctx.restore();
 }
 
 function drawLogo(ctx, cx, cy, r) {
   ctx.save();
-  ctx.shadowColor = "rgba(255, 234, 137, 0.4)";
-  ctx.shadowBlur = 18;
-  ctx.strokeStyle = GOLD.bright;
-  ctx.lineWidth = 2.2;
+  ctx.shadowColor = "rgba(0,0,0,0.6)";
+  ctx.shadowBlur = 12;
+  // Clip to circle
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = "#020202";
-  ctx.beginPath();
-  ctx.arc(cx, cy, r - 7, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = "rgba(231, 202, 102, .92)";
-  ctx.lineWidth = 3.4;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r - 12, 0, Math.PI * 2);
-  ctx.stroke();
-
-  const gradient = goldGradient(ctx, cx - r, cy - r, cx + r, cy + r);
-  ctx.fillStyle = gradient;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.shadowColor = "rgba(0, 0, 0, .75)";
-  ctx.shadowBlur = 8;
-  ctx.font = `900 ${r * 0.38}px Montserrat, Arial Black, sans-serif`;
-  ctx.fillText("THE", cx, cy - r * 0.16);
-  ctx.font = `900 ${r * 0.74}px Montserrat, Arial Black, sans-serif`;
-  ctx.fillText("20", cx, cy + r * 0.28);
+  ctx.clip();
+  if (logoImage.complete && logoImage.naturalWidth > 0) {
+    ctx.drawImage(logoImage, cx - r, cy - r, r * 2, r * 2);
+  } else {
+    // Fallback drawn logo
+    ctx.fillStyle = "#111";
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.strokeStyle = GOLD.line;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = goldGradient(ctx, cx - r, cy - r, cx + r, cy + r);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `900 ${r * 0.36}px Montserrat, sans-serif`;
+    ctx.fillText("THE", cx, cy - r * 0.18);
+    ctx.font = `900 ${r * 0.72}px Montserrat, sans-serif`;
+    ctx.fillText("20", cx, cy + r * 0.28);
+  }
   ctx.restore();
 }
 
-function drawRing(ctx, cx, cy, r) {
+function drawPlaceholderPortrait(ctx, S) {
   ctx.save();
-  ctx.strokeStyle = goldGradient(ctx, cx - r, cy - r, cx + r, cy + r);
-  ctx.lineCap = "round";
-  ctx.lineWidth = 6;
-  ctx.shadowColor = "rgba(255, 228, 123, 0.32)";
-  ctx.shadowBlur = 16;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, Math.PI * 0.8, Math.PI * 2.08);
-  ctx.stroke();
+  const g = ctx.createRadialGradient(S * 0.5, S * 0.35, S * 0.05, S * 0.5, S * 0.42, S * 0.42);
+  g.addColorStop(0, "rgba(255,255,255,.15)");
+  g.addColorStop(0.5, "rgba(40,40,37,.65)");
+  g.addColorStop(1, "rgba(0,0,0,.85)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, S, S);
 
-  ctx.shadowBlur = 0;
-  ctx.globalAlpha = 0.88;
-  ctx.lineWidth = 14;
+  ctx.fillStyle = "rgba(231,202,102,.14)";
   ctx.beginPath();
-  ctx.arc(cx, cy, r + 12, Math.PI * 1.02, Math.PI * 1.42);
-  ctx.stroke();
-
-  ctx.globalAlpha = 0.6;
-  ctx.lineWidth = 10;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r + 24, Math.PI * 1.4, Math.PI * 1.72);
-  ctx.stroke();
-
-  ctx.globalAlpha = 0.35;
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r + 34, Math.PI * 1.5, Math.PI * 1.95);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawPlaceholderPortrait(ctx) {
-  ctx.save();
-  const gradient = ctx.createRadialGradient(540, 360, 50, 540, 430, 440);
-  gradient.addColorStop(0, "rgba(255,255,255,.16)");
-  gradient.addColorStop(0.55, "rgba(40,40,37,.7)");
-  gradient.addColorStop(1, "rgba(0,0,0,.8)");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(90, 40, 900, 800);
-
-  ctx.fillStyle = "rgba(231, 202, 102, .16)";
-  ctx.beginPath();
-  ctx.arc(540, 320, 110, 0, Math.PI * 2);
+  ctx.arc(S * 0.5, S * 0.3, S * 0.1, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(540, 600, 230, 190, 0, 0, Math.PI * 2);
+  ctx.ellipse(S * 0.5, S * 0.55, S * 0.2, S * 0.17, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
 
-function renderAvatar(canvas) {
+function renderAvatar(canvas, templateOverride) {
   const ctx = canvas.getContext("2d");
-  const width = canvas.width;
-  const height = canvas.height;
+  const S = canvas.width; // square canvas
   const name = state.name.trim().toUpperCase() || "YOUR NAME";
+  const tpl = templateOverride || state.template;
 
-  ctx.clearRect(0, 0, width, height);
+  ctx.clearRect(0, 0, S, S);
+
+  // ── 1. Black background
   ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, S, S);
 
-  const glow = ctx.createRadialGradient(560, 360, 80, 560, 360, 590);
-  glow.addColorStop(0, "rgba(255,255,255,.08)");
-  glow.addColorStop(0.45, "rgba(25,25,22,.55)");
+  // ── 2. Subtle radial glow centre
+  const glow = ctx.createRadialGradient(S * 0.52, S * 0.34, S * 0.07, S * 0.52, S * 0.38, S * 0.55);
+  glow.addColorStop(0, "rgba(255,255,255,.07)");
+  glow.addColorStop(0.4, "rgba(20,20,18,.5)");
   glow.addColorStop(1, "rgba(0,0,0,1)");
   ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, S, S);
 
-  drawHalftone(ctx, "left");
-  drawHalftone(ctx, "right");
-  drawRing(ctx, 540, 420, 452);
+  // ── 3. Halftone dot fields on sides
+  drawHalftone(ctx, S, "left");
+  drawHalftone(ctx, S, "right");
 
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(540, 420, 448, 0, Math.PI * 2);
-  ctx.clip();
+  // ── 4. Gold ring (behind portrait so edges clip nicely)
+  if (tpl === "B") drawRingB(ctx, S);
+  else drawRingA(ctx, S);
+
+  // ── 5. Portrait photo — fills full canvas, centered cover crop
   if (state.image) {
-    drawCover(ctx, state.image, 104, 18, 872, 804);
+    drawCover(ctx, state.image, 0, 0, S, S);
   } else {
-    drawPlaceholderPortrait(ctx);
+    drawPlaceholderPortrait(ctx, S);
   }
 
-  const edge = ctx.createRadialGradient(540, 390, 180, 540, 400, 480);
-  edge.addColorStop(0, "rgba(0,0,0,0)");
-  edge.addColorStop(0.62, "rgba(0,0,0,0)");
-  edge.addColorStop(1, "rgba(0,0,0,.72)");
-  ctx.fillStyle = edge;
-  ctx.fillRect(58, -10, 964, 888);
+  // ── 6. Vignette: heavy dark edges all around + solid black bottom ~30%
+  // Left edge
+  const leftV = ctx.createLinearGradient(0, 0, S * 0.22, 0);
+  leftV.addColorStop(0, "rgba(0,0,0,0.92)");
+  leftV.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = leftV;
+  ctx.fillRect(0, 0, S * 0.22, S);
 
-  const bottomFade = ctx.createLinearGradient(0, 530, 0, 860);
+  // Right edge
+  const rightV = ctx.createLinearGradient(S, 0, S * 0.78, 0);
+  rightV.addColorStop(0, "rgba(0,0,0,0.92)");
+  rightV.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = rightV;
+  ctx.fillRect(S * 0.78, 0, S * 0.22, S);
+
+  // Top edge subtle darkening
+  const topV = ctx.createLinearGradient(0, 0, 0, S * 0.15);
+  topV.addColorStop(0, "rgba(0,0,0,0.55)");
+  topV.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = topV;
+  ctx.fillRect(0, 0, S, S * 0.15);
+
+  // Bottom fade — photo fades into black text area starting at ~55%
+  const bottomFade = ctx.createLinearGradient(0, S * 0.52, 0, S * 0.74);
   bottomFade.addColorStop(0, "rgba(0,0,0,0)");
-  bottomFade.addColorStop(0.44, "rgba(0,0,0,.5)");
-  bottomFade.addColorStop(0.72, "rgba(0,0,0,.95)");
+  bottomFade.addColorStop(0.5, "rgba(0,0,0,0.75)");
   bottomFade.addColorStop(1, "#000");
   ctx.fillStyle = bottomFade;
-  ctx.fillRect(0, 500, width, 370);
-  ctx.restore();
+  ctx.fillRect(0, S * 0.52, S, S * 0.22);
 
-  drawRing(ctx, 540, 420, 452);
-  drawLogo(ctx, 160, 170, 88);
+  // Solid black lower section for text
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, S * 0.74, S, S * 0.26);
 
-  fillGoldText(ctx, name, 540, 686, 49, 900, 775);
+  // ── 7. Ring drawn again on top so it overlays the photo edges
+  if (tpl === "B") drawRingB(ctx, S);
+  else drawRingA(ctx, S);
 
+  // ── 8. Logo badge — top left
+  const logoR = S * 0.09;
+  drawLogo(ctx, S * 0.16, S * 0.16, logoR);
+
+  // ── 9. Name — sits just inside the black area
+  fillGoldText(ctx, name, S * 0.5, S * 0.772, S * 0.058, 900, S * 0.82);
+
+  // Divider line
   ctx.save();
-  ctx.strokeStyle = goldGradient(ctx, 390, 722, 690, 722);
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = goldGradient(ctx, S * 0.3, S * 0.806, S * 0.7, S * 0.806);
+  ctx.lineWidth = S * 0.002;
   ctx.beginPath();
-  ctx.moveTo(398, 724);
-  ctx.lineTo(682, 724);
+  ctx.moveTo(S * 0.305, S * 0.808);
+  ctx.lineTo(S * 0.695, S * 0.808);
   ctx.stroke();
   ctx.restore();
 
+  // "MEMBER OF"
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = "800 27px Manrope, Avenir Next, sans-serif";
+  ctx.font = `800 ${S * 0.032}px Manrope, Avenir Next, sans-serif`;
   ctx.fillStyle = GOLD.bright;
-  ctx.fillText("MEMBER OF", 540, 780);
+  ctx.fillText("MEMBER OF", S * 0.5, S * 0.843);
 
-  fillGoldText(ctx, "THE 20", 540, 844, 76, 900, 520);
+  // "THE 20"
+  fillGoldText(ctx, "THE 20", S * 0.5, S * 0.901, S * 0.09, 900, S * 0.6);
 
-  ctx.fillStyle = "#fff";
-  ctx.font = "800 25px Manrope, Avenir Next, sans-serif";
-  ctx.fillText("The Leke Alder Fellows Program", 540, 907);
-  ctx.font = "800 23px Manrope, Avenir Next, sans-serif";
-  ctx.fillText("for Kings, Priests, Masters & Creatives.", 540, 941);
+  // Tagline
+  ctx.fillStyle = "#e8e4dc";
+  ctx.font = `600 ${S * 0.026}px Manrope, Avenir Next, sans-serif`;
+  ctx.fillText("The Leke Alder Fellows Program", S * 0.5, S * 0.952);
+  ctx.font = `600 ${S * 0.024}px Manrope, Avenir Next, sans-serif`;
+  ctx.fillText("for Kings, Priests, Masters & Creatives.", S * 0.5, S * 0.978);
 }
 
 function renderAll() {
   renderAvatar(els.previewCanvas);
   renderAvatar(els.finalCanvas);
+}
+
+function renderThumbs() {
+  els.thumbCanvases.forEach((canvas) => {
+    renderAvatar(canvas, canvas.dataset.thumb);
+  });
 }
 
 function downloadAvatar() {
@@ -391,19 +507,11 @@ async function shareNative() {
     const blob = await new Promise((resolve) => els.finalCanvas.toBlob(resolve, "image/png"));
     const file = new File([blob], "the-20-avatar.png", { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({
-        title: "The 20 Avatar",
-        text: shareCopy,
-        files: [file],
-      });
+      await navigator.share({ title: "The 20 Avatar", text: shareCopy, files: [file] });
       return true;
     }
     if (navigator.share) {
-      await navigator.share({
-        title: "The 20 Avatar",
-        text: shareCopy,
-        url: "https://the20.com",
-      });
+      await navigator.share({ title: "The 20 Avatar", text: shareCopy, url: "https://the20.com" });
       return true;
     }
   } catch {
@@ -413,16 +521,11 @@ async function shareNative() {
 }
 
 async function handleShare(platform) {
-  if (platform === "copy") {
-    await copyShareText();
-    return;
-  }
+  if (platform === "copy") { await copyShareText(); return; }
 
   if (platform === "instagram") {
     const shared = await shareNative();
-    if (!shared) {
-      showToast("Download the image, then post it to Instagram.");
-    }
+    if (!shared) showToast("Download the image, then post it to Instagram.");
     return;
   }
 
@@ -433,68 +536,54 @@ async function handleShare(platform) {
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
   };
-
   window.open(urls[platform], "_blank", "noopener,noreferrer,width=760,height=640");
 }
 
-els.fileInput.addEventListener("change", (event) => {
-  loadPhoto(event.target.files[0]);
-});
+// ── Event listeners ──────────────────────────────────────────────
 
-["dragenter", "dragover"].forEach((eventName) => {
-  els.dropZone.addEventListener(eventName, (event) => {
-    event.preventDefault();
-    els.dropZone.classList.add("is-dragging");
-  });
-});
+els.fileInput.addEventListener("change", (e) => loadPhoto(e.target.files[0]));
 
-["dragleave", "drop"].forEach((eventName) => {
-  els.dropZone.addEventListener(eventName, (event) => {
-    event.preventDefault();
-    els.dropZone.classList.remove("is-dragging");
-  });
+["dragenter", "dragover"].forEach((ev) => {
+  els.dropZone.addEventListener(ev, (e) => { e.preventDefault(); els.dropZone.classList.add("is-dragging"); });
 });
+["dragleave", "drop"].forEach((ev) => {
+  els.dropZone.addEventListener(ev, (e) => { e.preventDefault(); els.dropZone.classList.remove("is-dragging"); });
+});
+els.dropZone.addEventListener("drop", (e) => loadPhoto(e.dataTransfer.files[0]));
 
-els.dropZone.addEventListener("drop", (event) => {
-  loadPhoto(event.dataTransfer.files[0]);
-});
-
-els.nameInput.addEventListener("input", (event) => {
-  updateName(event.target.value);
-});
+els.nameInput.addEventListener("input", (e) => updateName(e.target.value));
 
 els.nextButtons.forEach((button) => {
   button.addEventListener("click", () => {
     const next = Number(button.dataset.next);
-    if (canOpenStep(next)) {
-      setStep(next);
-    } else {
-      showToast("Upload a photo and add your name first.");
-    }
+    if (canOpenStep(next)) setStep(next);
+    else showToast("Upload a photo and add your name first.");
   });
 });
 
 els.steps.forEach((stepButton) => {
   stepButton.addEventListener("click", () => {
     const step = Number(stepButton.dataset.jumpStep);
-    if (step === 4 && canOpenStep(step)) {
-      downloadAvatar();
-      return;
-    }
+    if (step === 4 && canOpenStep(step)) { downloadAvatar(); return; }
+    if (canOpenStep(step)) setStep(Math.min(step, 4));
+  });
+});
 
-    if (canOpenStep(step)) {
-      setStep(Math.min(step, 3));
-    }
+els.templateCards.forEach((card) => {
+  card.addEventListener("click", () => {
+    state.template = card.dataset.template;
+    els.templateCards.forEach((c) => c.classList.toggle("is-selected", c === card));
+    renderAll();
   });
 });
 
 els.downloadButton.addEventListener("click", downloadAvatar);
 
 els.shareButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    handleShare(button.dataset.share);
-  });
+  button.addEventListener("click", () => handleShare(button.dataset.share));
 });
+
+logoImage.onload = () => renderAll();
 
 document.fonts.ready.then(() => {
   updateName(els.nameInput.value);

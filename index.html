@@ -41,7 +41,7 @@
           <span class="step-rule" aria-hidden="true"></span>
           <button class="step" type="button" data-jump-step="3">
             <span class="step-index">3</span>
-            <span>Preview</span>
+            <span>Style</span>
           </button>
           <span class="step-rule" aria-hidden="true"></span>
           <button class="step" type="button" data-jump-step="4">
@@ -71,7 +71,7 @@
               <span class="step-rule" aria-hidden="true"></span>
               <button class="step" type="button" data-jump-step="3">
                 <span class="step-index">3</span>
-                <span>Preview</span>
+                <span>Style</span>
               </button>
               <span class="step-rule" aria-hidden="true"></span>
               <button class="step" type="button" data-jump-step="4">
@@ -136,14 +136,39 @@
             </div>
 
             <button class="primary-action" type="button" data-next="3">
-              <span>Continue to preview</span>
+              <span>Choose your style</span>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 12h14m-6-6 6 6-6 6" />
               </svg>
             </button>
           </section>
 
-          <section class="panel panel-download" data-panel="3" aria-labelledby="ready-title">
+          <section class="panel panel-style" data-panel="3" aria-labelledby="style-title">
+            <div class="center-copy">
+              <h1 id="style-title">Choose your style</h1>
+              <p>Pick the look that feels like you.</p>
+            </div>
+
+            <div class="template-grid">
+              <button class="template-card is-selected" type="button" data-template="A" aria-label="Template A — smooth ring">
+                <canvas class="template-thumb" data-thumb="A" width="540" height="540"></canvas>
+                <span class="template-label">Classic</span>
+              </button>
+              <button class="template-card" type="button" data-template="B" aria-label="Template B — brushstroke ring">
+                <canvas class="template-thumb" data-thumb="B" width="540" height="540"></canvas>
+                <span class="template-label">Brushstroke</span>
+              </button>
+            </div>
+
+            <button class="primary-action" type="button" data-next="4">
+              <span>Continue to download</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h14m-6-6 6 6-6 6" />
+              </svg>
+            </button>
+          </section>
+
+          <section class="panel panel-download" data-panel="4" aria-labelledby="ready-title">
             <div class="center-copy">
               <h1 id="ready-title">You’re all set!</h1>
               <p>Your avatar is ready to download and share.</p>
