@@ -1010,15 +1010,12 @@ body[data-step="1"] .top-stepper {
 /* ── Light mode ────────────────────────────────────────── */
 
 html[data-theme="light"] {
-  background: #f5f1e6;
+  background: #ffffff;
 }
 
 [data-theme="light"] body {
-  color: #1a1208;
-  background:
-    radial-gradient(circle at 20% 8%, rgba(231, 202, 102, 0.16), transparent 30rem),
-    radial-gradient(circle at 80% 88%, rgba(200, 155, 30, 0.12), transparent 34rem),
-    #f5f1e6;
+  color: #414651;
+  background: #ffffff;
 }
 
 [data-theme="light"] .app-card {
@@ -1119,7 +1116,7 @@ html[data-theme="light"] {
 [data-theme="light"] .name-form input {
   background: rgba(255, 255, 255, 0.92);
   border-color: rgba(184, 148, 30, 0.55);
-  color: #1a1208;
+  color: #414651;
 }
 
 [data-theme="light"] .name-form input:focus {
@@ -1173,7 +1170,7 @@ html[data-theme="light"] {
 
 [data-theme="light"] .toast {
   background: rgba(255, 252, 240, 0.97);
-  color: #1a1208;
+  color: #414651;
   border-color: rgba(184, 148, 30, 0.5);
   box-shadow: 0 16px 38px rgba(0, 0, 0, 0.12);
 }
