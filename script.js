@@ -34,12 +34,18 @@ const GOLD = {
 const shareCopy =
   "I just created my The 20 avatar for The Leke Alder Fellows Program for Kings, Priests, Masters & Creatives.";
 
-const logoImage = new Image();
-logoImage.src = "public/the20-logo.png";
+function fetchImage(src, onload) {
+  const img = new Image();
+  img.onload = onload;
+  fetch(src)
+    .then((r) => r.blob())
+    .then((blob) => { img.src = URL.createObjectURL(blob); })
+    .catch(() => { img.src = src; });
+  return img;
+}
 
-const classicRingImage = new Image();
-classicRingImage.src = "public/classic-ring.png";
-classicRingImage.onload = () => renderAll();
+const logoImage = fetchImage("public/the20-logo.png", () => renderAll());
+const classicRingImage = fetchImage("public/classic-ring.png", () => renderAll());
 
 function setStep(step) {
   const panelStep = Math.min(step, 4);
@@ -516,17 +522,21 @@ function downloadAvatar() {
   }
 
   renderAvatar(els.finalCanvas);
-  const link = document.createElement("a");
   const fileName = state.name
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-  link.download = `${fileName || "the-20"}-avatar.png`;
-  link.href = els.finalCanvas.toDataURL("image/png");
-  link.click();
-  setStep(4);
-  showToast("Avatar downloaded.");
+  try {
+    const link = document.createElement("a");
+    link.download = `${fileName || "the-20"}-avatar.png`;
+    link.href = els.finalCanvas.toDataURL("image/png");
+    link.click();
+    setStep(4);
+    showToast("Avatar downloaded.");
+  } catch {
+    showToast("Download failed — open the app via a web server, not a local file.");
+  }
 }
 
 async function copyShareText() {
@@ -619,7 +629,7 @@ els.shareButtons.forEach((button) => {
   button.addEventListener("click", () => handleShare(button.dataset.share));
 });
 
-logoImage.onload = () => renderAll();
+// onload handlers are set in fetchImage above
 
 document.fonts.ready.then(() => {
   updateName(els.nameInput.value);
