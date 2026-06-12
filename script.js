@@ -444,16 +444,15 @@ function renderAvatar(canvas, templateOverride) {
   }
 
   // Bottom fade into text area (applies to both templates)
-  const bottomFade = ctx.createLinearGradient(0, S * 0.52, 0, S * 0.74);
+  const bottomFade = ctx.createLinearGradient(0, S * 0.55, 0, S * 0.64);
   bottomFade.addColorStop(0, "rgba(0,0,0,0)");
-  bottomFade.addColorStop(0.5, "rgba(0,0,0,0.75)");
-  bottomFade.addColorStop(1, "#000");
+  bottomFade.addColorStop(1, "rgba(0,0,0,1)");
   ctx.fillStyle = bottomFade;
-  ctx.fillRect(0, S * 0.52, S, S * 0.22);
+  ctx.fillRect(0, S * 0.55, S, S * 0.09);
 
   // Solid black lower section for text
   ctx.fillStyle = "#000";
-  ctx.fillRect(0, S * 0.74, S, S * 0.26);
+  ctx.fillRect(0, S * 0.64, S, S * 0.36);
 
   // ── 7. Ring drawn on top of photo
   if (useBrushImage) {
@@ -480,35 +479,35 @@ function renderAvatar(canvas, templateOverride) {
     drawLogo(ctx, S * 0.16, S * 0.16, logoR);
   }
 
-  // ── 9. Name — sits just inside the black area
-  fillGoldText(ctx, name, S * 0.5, S * 0.772, S * 0.058, 900, S * 0.82);
+  // ── 9. Name
+  fillGoldText(ctx, name, S * 0.5, S * 0.666, S * 0.040, 900, S * 0.82);
 
   // Divider line
   ctx.save();
-  ctx.strokeStyle = goldGradient(ctx, S * 0.3, S * 0.806, S * 0.7, S * 0.806);
-  ctx.lineWidth = S * 0.002;
+  ctx.strokeStyle = goldGradient(ctx, S * 0.3, S * 0.696, S * 0.7, S * 0.696);
+  ctx.lineWidth = S * 0.0015;
   ctx.beginPath();
-  ctx.moveTo(S * 0.305, S * 0.808);
-  ctx.lineTo(S * 0.695, S * 0.808);
+  ctx.moveTo(S * 0.305, S * 0.696);
+  ctx.lineTo(S * 0.695, S * 0.696);
   ctx.stroke();
   ctx.restore();
 
   // "MEMBER OF"
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `800 ${S * 0.032}px Manrope, Avenir Next, sans-serif`;
+  ctx.font = `800 ${S * 0.024}px Manrope, Avenir Next, sans-serif`;
   ctx.fillStyle = GOLD.bright;
-  ctx.fillText("MEMBER OF", S * 0.5, S * 0.843);
+  ctx.fillText("MEMBER OF", S * 0.5, S * 0.730);
 
   // "THE 20"
-  fillGoldText(ctx, "THE 20", S * 0.5, S * 0.901, S * 0.09, 900, S * 0.6);
+  fillGoldText(ctx, "THE 20", S * 0.5, S * 0.786, S * 0.072, 900, S * 0.6);
 
   // Tagline
   ctx.fillStyle = "#e8e4dc";
-  ctx.font = `600 ${S * 0.026}px Manrope, Avenir Next, sans-serif`;
-  ctx.fillText("The Leke Alder Fellows Program", S * 0.5, S * 0.952);
   ctx.font = `600 ${S * 0.024}px Manrope, Avenir Next, sans-serif`;
-  ctx.fillText("for Kings, Priests, Masters & Creatives.", S * 0.5, S * 0.978);
+  ctx.fillText("The Leke Alder Fellows Program", S * 0.5, S * 0.840);
+  ctx.font = `600 ${S * 0.022}px Manrope, Avenir Next, sans-serif`;
+  ctx.fillText("for Kings, Priests, Masters & Creatives.", S * 0.5, S * 0.865);
 }
 
 function renderAll() {
