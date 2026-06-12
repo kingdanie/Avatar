@@ -2,7 +2,7 @@ const state = {
   step: 1,
   image: null,
   imageFile: null,
-  name: "Alex Johnson",
+  name: "",
   template: "A",
   toastTimer: null,
 };
@@ -92,8 +92,9 @@ function showToast(message) {
 }
 
 function updateName(value) {
-  state.name = value.trim() || "Your Name";
+  state.name = value.trim();
   els.nameCount.textContent = String(value.length);
+  if (state.name) els.nameInput.classList.remove("is-error");
   renderAll();
 }
 
@@ -610,8 +611,15 @@ els.nameInput.addEventListener("input", (e) => updateName(e.target.value));
 els.nextButtons.forEach((button) => {
   button.addEventListener("click", () => {
     const next = Number(button.dataset.next);
-    if (canOpenStep(next)) setStep(next);
-    else showToast("Upload a photo and add your name first.");
+    if (canOpenStep(next)) {
+      setStep(next);
+    } else if (!state.image) {
+      showToast("Upload a photo first.");
+    } else {
+      els.nameInput.classList.add("is-error");
+      els.nameInput.focus();
+      showToast("Enter your name to continue.");
+    }
   });
 });
 

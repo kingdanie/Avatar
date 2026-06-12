@@ -206,7 +206,7 @@ body[data-step="1"] .top-stepper {
 }
 
 .upload-stepper {
-  margin: 38px -44px 48px;
+  margin: 30px -44px 30px;
   min-height: auto;
   padding: 0;
 }
@@ -513,6 +513,18 @@ body[data-step="1"] .top-stepper {
 .name-form input:focus {
   border-color: var(--gold-bright);
   box-shadow: 0 0 0 3px rgba(231, 202, 102, 0.16);
+}
+
+.name-form input.is-error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(247, 188, 107, 0.22);
+  animation: shake 280ms ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-6px); }
+  75%       { transform: translateX(6px); }
 }
 
 .char-count {
