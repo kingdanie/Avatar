@@ -37,6 +37,10 @@ const shareCopy =
 const logoImage = new Image();
 logoImage.src = "public/the20-logo.png";
 
+const classicRingImage = new Image();
+classicRingImage.src = "public/classic-ring.png";
+classicRingImage.onload = () => renderAll();
+
 function setStep(step) {
   const panelStep = Math.min(step, 4);
   state.step = step;
@@ -359,6 +363,12 @@ function renderAvatar(canvas, templateOverride) {
   const name = state.name.trim().toUpperCase() || "YOUR NAME";
   const tpl = templateOverride || state.template;
 
+  // Classic ring image geometry — must match the proportions in classic-ring.png
+  const RING_CX = S * 0.50;
+  const RING_CY = S * 0.47;
+  const RING_INNER_R = S * 0.39;
+  const useRingImage = tpl === "A" && classicRingImage.complete && classicRingImage.naturalWidth > 0;
+
   ctx.clearRect(0, 0, S, S);
 
   // ── 1. Black background
@@ -377,40 +387,56 @@ function renderAvatar(canvas, templateOverride) {
   drawHalftone(ctx, S, "left");
   drawHalftone(ctx, S, "right");
 
-  // ── 4. Gold ring (behind portrait so edges clip nicely)
+  // ── 4. Gold ring behind portrait (template B only; ring image composited later for A)
   if (tpl === "B") drawRingB(ctx, S);
-  else drawRingA(ctx, S);
+  else if (!useRingImage) drawRingA(ctx, S);
 
-  // ── 5. Portrait photo — fills full canvas, centered cover crop
-  if (state.image) {
-    drawCover(ctx, state.image, 0, 0, S, S);
+  // ── 5. Portrait photo
+  if (useRingImage) {
+    // Clip photo strictly to ring interior so it never overflows the ring
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(RING_CX, RING_CY, RING_INNER_R, 0, Math.PI * 2);
+    ctx.clip();
+    if (state.image) {
+      drawCover(ctx, state.image, RING_CX - RING_INNER_R, RING_CY - RING_INNER_R, RING_INNER_R * 2, RING_INNER_R * 2);
+    } else {
+      drawPlaceholderPortrait(ctx, S);
+    }
+    ctx.restore();
   } else {
-    drawPlaceholderPortrait(ctx, S);
+    if (state.image) {
+      drawCover(ctx, state.image, 0, 0, S, S);
+    } else {
+      drawPlaceholderPortrait(ctx, S);
+    }
   }
 
-  // ── 6. Vignette: heavy dark edges all around + solid black bottom ~30%
-  // Left edge
-  const leftV = ctx.createLinearGradient(0, 0, S * 0.22, 0);
-  leftV.addColorStop(0, "rgba(0,0,0,0.92)");
-  leftV.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = leftV;
-  ctx.fillRect(0, 0, S * 0.22, S);
+  // ── 6. Vignette
+  if (!useRingImage) {
+    // Left edge
+    const leftV = ctx.createLinearGradient(0, 0, S * 0.22, 0);
+    leftV.addColorStop(0, "rgba(0,0,0,0.92)");
+    leftV.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = leftV;
+    ctx.fillRect(0, 0, S * 0.22, S);
 
-  // Right edge
-  const rightV = ctx.createLinearGradient(S, 0, S * 0.78, 0);
-  rightV.addColorStop(0, "rgba(0,0,0,0.92)");
-  rightV.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = rightV;
-  ctx.fillRect(S * 0.78, 0, S * 0.22, S);
+    // Right edge
+    const rightV = ctx.createLinearGradient(S, 0, S * 0.78, 0);
+    rightV.addColorStop(0, "rgba(0,0,0,0.92)");
+    rightV.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = rightV;
+    ctx.fillRect(S * 0.78, 0, S * 0.22, S);
 
-  // Top edge subtle darkening
-  const topV = ctx.createLinearGradient(0, 0, 0, S * 0.15);
-  topV.addColorStop(0, "rgba(0,0,0,0.55)");
-  topV.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = topV;
-  ctx.fillRect(0, 0, S, S * 0.15);
+    // Top edge subtle darkening
+    const topV = ctx.createLinearGradient(0, 0, 0, S * 0.15);
+    topV.addColorStop(0, "rgba(0,0,0,0.55)");
+    topV.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = topV;
+    ctx.fillRect(0, 0, S, S * 0.15);
+  }
 
-  // Bottom fade — photo fades into black text area starting at ~55%
+  // Bottom fade into text area (applies to both templates)
   const bottomFade = ctx.createLinearGradient(0, S * 0.52, 0, S * 0.74);
   bottomFade.addColorStop(0, "rgba(0,0,0,0)");
   bottomFade.addColorStop(0.5, "rgba(0,0,0,0.75)");
@@ -422,13 +448,23 @@ function renderAvatar(canvas, templateOverride) {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, S * 0.74, S, S * 0.26);
 
-  // ── 7. Ring drawn again on top so it overlays the photo edges
-  if (tpl === "B") drawRingB(ctx, S);
-  else drawRingA(ctx, S);
+  // ── 7. Ring drawn on top of photo
+  if (tpl === "B") {
+    drawRingB(ctx, S);
+  } else if (useRingImage) {
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.drawImage(classicRingImage, 0, 0, S, S);
+    ctx.restore();
+  } else {
+    drawRingA(ctx, S);
+  }
 
-  // ── 8. Logo badge — top left
-  const logoR = S * 0.09;
-  drawLogo(ctx, S * 0.16, S * 0.16, logoR);
+  // ── 8. Logo badge (ring image already includes it for template A)
+  if (!useRingImage) {
+    const logoR = S * 0.09;
+    drawLogo(ctx, S * 0.16, S * 0.16, logoR);
+  }
 
   // ── 9. Name — sits just inside the black area
   fillGoldText(ctx, name, S * 0.5, S * 0.772, S * 0.058, 900, S * 0.82);
