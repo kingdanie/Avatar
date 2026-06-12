@@ -46,6 +46,7 @@ function fetchImage(src, onload) {
 
 const logoImage = fetchImage("public/the20-logo.png", () => renderAll());
 const classicRingImage = fetchImage("public/classic-ring.png", () => renderAll());
+const brushstrokeImage = fetchImage("public/brushstroke.png", () => renderAll());
 
 function setStep(step) {
   const panelStep = Math.min(step, 4);
@@ -369,11 +370,12 @@ function renderAvatar(canvas, templateOverride) {
   const name = state.name.trim().toUpperCase() || "YOUR NAME";
   const tpl = templateOverride || state.template;
 
-  // Classic ring image geometry — must match the proportions in classic-ring.png
+  // Ring image geometry constants — adjust to match each image's proportions
   const RING_CX = S * 0.50;
   const RING_CY = S * 0.47;
   const RING_INNER_R = S * 0.39;
-  const useRingImage = tpl === "A" && classicRingImage.complete && classicRingImage.naturalWidth > 0;
+  const useRingImage   = tpl === "A" && classicRingImage.complete && classicRingImage.naturalWidth > 0;
+  const useBrushImage  = tpl === "B" && brushstrokeImage.complete && brushstrokeImage.naturalWidth > 0;
 
   ctx.clearRect(0, 0, S, S);
 
@@ -393,13 +395,12 @@ function renderAvatar(canvas, templateOverride) {
   drawHalftone(ctx, S, "left");
   drawHalftone(ctx, S, "right");
 
-  // ── 4. Gold ring behind portrait (template B only; ring image composited later for A)
-  if (tpl === "B") drawRingB(ctx, S);
-  else if (!useRingImage) drawRingA(ctx, S);
+  // ── 4. Gold ring behind portrait (fallback only; images composited later)
+  if (tpl === "B" && !useBrushImage) drawRingB(ctx, S);
+  else if (tpl === "A" && !useRingImage) drawRingA(ctx, S);
 
-  // ── 5. Portrait photo
-  if (useRingImage) {
-    // Clip photo strictly to ring interior so it never overflows the ring
+  // ── 5. Portrait photo — clipped to ring interior when using an image template
+  if (useRingImage || useBrushImage) {
     ctx.save();
     ctx.beginPath();
     ctx.arc(RING_CX, RING_CY, RING_INNER_R, 0, Math.PI * 2);
@@ -419,7 +420,7 @@ function renderAvatar(canvas, templateOverride) {
   }
 
   // ── 6. Vignette
-  if (!useRingImage) {
+  if (!useRingImage && !useBrushImage) {
     // Left edge
     const leftV = ctx.createLinearGradient(0, 0, S * 0.22, 0);
     leftV.addColorStop(0, "rgba(0,0,0,0.92)");
@@ -455,19 +456,26 @@ function renderAvatar(canvas, templateOverride) {
   ctx.fillRect(0, S * 0.74, S, S * 0.26);
 
   // ── 7. Ring drawn on top of photo
-  if (tpl === "B") {
-    drawRingB(ctx, S);
+  if (useBrushImage) {
+    // brushstroke.png has a white background — multiply makes white transparent
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.drawImage(brushstrokeImage, 0, 0, S, S);
+    ctx.restore();
   } else if (useRingImage) {
+    // classic-ring.png has a black background — screen makes black transparent
     ctx.save();
     ctx.globalCompositeOperation = "screen";
     ctx.drawImage(classicRingImage, 0, 0, S, S);
     ctx.restore();
+  } else if (tpl === "B") {
+    drawRingB(ctx, S);
   } else {
     drawRingA(ctx, S);
   }
 
-  // ── 8. Logo badge (ring image already includes it for template A)
-  if (!useRingImage) {
+  // ── 8. Logo badge (ring images already include it)
+  if (!useRingImage && !useBrushImage) {
     const logoR = S * 0.09;
     drawLogo(ctx, S * 0.16, S * 0.16, logoR);
   }
@@ -630,6 +638,22 @@ els.shareButtons.forEach((button) => {
 });
 
 // onload handlers are set in fetchImage above
+
+// ── Theme toggle ─────────────────────────────────────────
+const themeToggle = document.querySelector("#theme-toggle");
+const themeLabel = themeToggle.querySelector(".theme-label");
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeLabel.textContent = theme === "light" ? "Dark" : "Light";
+  localStorage.setItem("theme", theme);
+}
+
+applyTheme(localStorage.getItem("theme") || "dark");
+
+themeToggle.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+});
 
 document.fonts.ready.then(() => {
   updateName(els.nameInput.value);
