@@ -560,7 +560,7 @@ body[data-step="1"] .top-stepper {
 }
 
 .live-preview-wrap canvas {
-  max-width: 300px;
+  max-width: 380px;
   border-radius: 8px;
   filter: drop-shadow(0 20px 34px rgba(0, 0, 0, 0.72));
 }
@@ -803,7 +803,7 @@ body[data-step="1"] .top-stepper {
   width: 100%;
   height: auto;
   display: block;
-  border-radius: 50%;
+  border-radius: 8px;
 }
 
 .template-label {
@@ -923,7 +923,7 @@ body[data-step="1"] .top-stepper {
   }
 
   .live-preview-wrap canvas {
-    max-width: 280px;
+    max-width: 340px;
   }
 
   .panel-name .primary-action {
