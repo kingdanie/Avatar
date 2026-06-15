@@ -206,13 +206,8 @@ function fillGoldText(ctx, text, x, y, fontSize, weight, maxWidth) {
     size -= 2;
   } while (size > 24);
 
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,.8)";
-  ctx.shadowBlur = 16;
-  ctx.shadowOffsetY = 4;
-  ctx.fillStyle = goldGradient(ctx, x - maxWidth / 2, y - size, x + maxWidth / 2, y + size);
+  ctx.fillStyle = GOLD.line;
   ctx.fillText(text, x, y);
-  ctx.restore();
 }
 
 // Halftone dot field on sides — matches template
@@ -464,9 +459,11 @@ function renderAvatar(canvas, templateOverride) {
     ctx.textBaseline = "middle";
 
     // "MEMBER OF"
-    ctx.font = `800 ${S * 0.028}px Manrope, Avenir Next, sans-serif`;
+    ctx.font = `800 ${S * 0.038}px Manrope, Avenir Next, sans-serif`;
     ctx.fillStyle = "#ffffff";
-    ctx.fillText("MEMBER OF", TX, S * 0.375);
+    ctx.textAlign = "center";
+    ctx.fillText("MEMBER OF", TX + S * 0.19, S * 0.375);
+    ctx.textAlign = "left";
 
     // Gold divider under "MEMBER OF"
     ctx.save();
@@ -478,17 +475,10 @@ function renderAvatar(canvas, templateOverride) {
     ctx.stroke();
     ctx.restore();
 
-    // "THE 20" — large gold headline
-    ctx.save();
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.shadowColor = "rgba(0,0,0,0.85)";
-    ctx.shadowBlur = 18;
-    ctx.shadowOffsetY = 4;
-    ctx.font = `900 ${S * 0.11}px Montserrat, Arial Black, sans-serif`;
-    ctx.fillStyle = goldGradient(ctx, TX, S * 0.455, TX + S * 0.44, S * 0.575);
+    // "THE 20" — large flat gold
+    ctx.font = `900 ${S * 0.085}px Montserrat, Arial Black, sans-serif`;
+    ctx.fillStyle = GOLD.line;
     ctx.fillText("THE 20", TX, S * 0.515);
-    ctx.restore();
 
     // Name
     ctx.font = `900 ${S * 0.050}px Manrope, Avenir Next, sans-serif`;
@@ -612,11 +602,11 @@ function renderAvatar(canvas, templateOverride) {
     ctx.stroke();
     ctx.restore();
 
-    ctx.font = `800 ${S * 0.024}px Manrope, Avenir Next, sans-serif`;
+    ctx.font = `800 ${S * 0.034}px Manrope, Avenir Next, sans-serif`;
     ctx.fillStyle = GOLD.bright;
     ctx.fillText("MEMBER OF", S * 0.5, S * 0.730 + textOffset);
 
-    fillGoldText(ctx, "THE 20", S * 0.5, S * 0.786 + textOffset, S * 0.072, 900, S * 0.6);
+    fillGoldText(ctx, "THE 20", S * 0.5, S * 0.786 + textOffset, S * 0.055, 900, S * 0.6);
 
     ctx.fillStyle = "#e8e4dc";
     ctx.font = `600 ${S * 0.024}px Manrope, Avenir Next, sans-serif`;

@@ -308,16 +308,11 @@ body[data-step="1"] .top-stepper {
   font-weight: 900;
   line-height: 0.98;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #fff5b6 0%, #d9bd62 43%, #8a6312 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 14px 40px rgba(231, 202, 102, 0.08);
+  color: #e7ca66;
 }
 
 .hero-copy .eyebrow {
   font-size: 2.25rem;
-  color: transparent;
 }
 
 .hero-copy h1 {
@@ -1090,15 +1085,7 @@ html[data-theme="light"] {
 [data-theme="light"] .hero-copy .eyebrow,
 [data-theme="light"] .hero-copy h1,
 [data-theme="light"] .center-copy h1 {
-  background: linear-gradient(180deg, #8a6312 0%, #d9bd62 43%, #8a6312 100%);
-    font-family: "Montserrat", "Arial Black", sans-serif;
-  font-weight: 900;
-  line-height: 0.98;
-  text-transform: uppercase;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 14px 40px rgba(231, 202, 102, 0.08);
+  color: #8a6312;
 }
 
 [data-theme="light"] .hero-copy p,
