@@ -478,19 +478,12 @@ function renderAvatar(canvas, templateOverride) {
     ctx.stroke();
     ctx.restore();
 
-    // "THE 20" — large gold headline
-    ctx.save();
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.shadowColor = "rgba(0,0,0,0.85)";
-    ctx.shadowBlur = 18;
-    ctx.shadowOffsetY = 4;
+    // "THE 20" — large flat gold
     ctx.font = `900 ${S * 0.11}px Montserrat, Arial Black, sans-serif`;
-    ctx.fillStyle = goldGradient(ctx, TX, S * 0.455, TX + S * 0.44, S * 0.575);
+    ctx.fillStyle = GOLD.line;
     ctx.fillText("THE 20", TX, S * 0.515);
-    ctx.restore();
 
-    // Name
+    // Name — flat gold
     ctx.font = `900 ${S * 0.050}px Manrope, Avenir Next, sans-serif`;
     ctx.fillStyle = GOLD.line;
     ctx.fillText(name, TX, S * 0.625);
