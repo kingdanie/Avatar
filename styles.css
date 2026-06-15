@@ -1232,6 +1232,51 @@ html[data-theme="light"] {
   filter: drop-shadow(0 28px 54px rgba(140, 100, 10, 0.22));
 }
 
+/* ── Background removal loading overlay ────────────────── */
+
+.bg-remove-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+  z-index: 10;
+  cursor: default;
+}
+
+.bg-remove-overlay.is-visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.bg-remove-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(231, 202, 102, 0.2);
+  border-top-color: var(--gold-bright);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.bg-remove-overlay p {
+  margin: 0;
+  color: var(--gold-bright);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
 @media (max-width: 390px) {
   .panel {
     padding-left: 18px;

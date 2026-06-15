@@ -1,7 +1,11 @@
+import { removeBackground } from "@imgly/background-removal";
+
 const state = {
   step: 1,
   image: null,
   imageFile: null,
+  processedImage: null,
+  bgRemoving: false,
   name: "",
   template: "A",
   toastTimer: null,
@@ -22,6 +26,7 @@ const els = {
   templateCards: [...document.querySelectorAll("[data-template]")],
   thumbCanvases: [...document.querySelectorAll("[data-thumb]")],
   toast: document.querySelector(".toast"),
+  bgOverlay: document.querySelector("#bg-remove-overlay"),
 };
 
 const GOLD = {
@@ -44,9 +49,9 @@ function fetchImage(src, onload) {
   return img;
 }
 
-const logoImage = fetchImage("public/the20-logo.png", () => renderAll());
-const classicRingImage = fetchImage("public/classic-ring.png", () => renderAll());
-const brushstrokeImage = fetchImage("public/brushstroke.png", () => renderAll());
+const logoImage = fetchImage("/the20-logo.png", () => renderAll());
+const classicRingImage = fetchImage("/classic-ring.png", () => renderAll());
+const brushstrokeImage = fetchImage("/brushstroke.png", () => renderAll());
 
 function setStep(step) {
   const panelStep = Math.min(step, 4);
@@ -115,13 +120,47 @@ function loadPhoto(file) {
   const reader = new FileReader();
   reader.onload = () => {
     const image = new Image();
-    image.onload = () => {
+    image.onload = async () => {
       state.image = image;
       state.imageFile = file;
+      state.processedImage = null;
       els.dropZone.classList.add("has-image");
       els.dropZone.querySelector("strong").innerHTML = "Photo selected<br />click to replace";
       els.dropZone.querySelector("small").textContent = file.name;
-      setStep(2);
+
+      // Show loading overlay and run background removal
+      state.bgRemoving = true;
+      els.bgOverlay.classList.add("is-visible");
+      renderAll();
+
+      try {
+        const resultBlob = await removeBackground(file, {
+          publicPath: "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/",
+        });
+        const url = URL.createObjectURL(resultBlob);
+        const processed = new Image();
+        processed.onload = () => {
+          state.processedImage = processed;
+          state.bgRemoving = false;
+          els.bgOverlay.classList.remove("is-visible");
+          setStep(2);
+          renderAll();
+        };
+        processed.onerror = () => {
+          state.bgRemoving = false;
+          els.bgOverlay.classList.remove("is-visible");
+          showToast("Background removal failed — using original photo.");
+          setStep(2);
+          renderAll();
+        };
+        processed.src = url;
+      } catch {
+        state.bgRemoving = false;
+        els.bgOverlay.classList.remove("is-visible");
+        showToast("Background removal failed — using original photo.");
+        setStep(2);
+        renderAll();
+      }
     };
     image.onerror = () => showToast("That image could not be loaded.");
     image.src = reader.result;
@@ -371,14 +410,8 @@ function renderAvatar(canvas, templateOverride) {
   const name = state.name.trim().toUpperCase() || "YOUR NAME";
   const tpl = templateOverride || state.template;
 
-  // Ring image geometry constants — adjust to match each image's proportions
-  const RING_CX = S * 0.50;
-  const RING_CY = S * 0.47;
-  const RING_INNER_R = S * 0.39;
-  // Classic ring is now a square frame — inner photo area inset from each edge
-  const FRAME_INSET = S * 0.04;
-  const useRingImage   = tpl === "A" && classicRingImage.complete && classicRingImage.naturalWidth > 0;
-  const useBrushImage  = tpl === "B" && brushstrokeImage.complete && brushstrokeImage.naturalWidth > 0;
+  const useRingImage  = tpl === "A" && classicRingImage.complete && classicRingImage.naturalWidth > 0;
+  const useBrushImage = tpl === "B" && brushstrokeImage.complete && brushstrokeImage.naturalWidth > 0;
 
   ctx.clearRect(0, 0, S, S);
 
@@ -386,145 +419,211 @@ function renderAvatar(canvas, templateOverride) {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, S, S);
 
-  // ── 2. Subtle radial glow centre
-  const glow = ctx.createRadialGradient(S * 0.52, S * 0.34, S * 0.07, S * 0.52, S * 0.38, S * 0.55);
-  glow.addColorStop(0, "rgba(255,255,255,.07)");
-  glow.addColorStop(0.4, "rgba(20,20,18,.5)");
-  glow.addColorStop(1, "rgba(0,0,0,1)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, S, S);
-
-  // ── 3. Halftone dot fields on sides
-  drawHalftone(ctx, S, "left");
-  drawHalftone(ctx, S, "right");
-
-  // ── 4. Gold ring behind portrait (fallback only; images composited later)
-  if (tpl === "B" && !useBrushImage) drawRingB(ctx, S);
-  else if (tpl === "A" && !useRingImage) drawRingA(ctx, S);
-
-  // ── 5. Portrait photo — clipped to frame interior when using an image template
   if (useRingImage) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(FRAME_INSET, FRAME_INSET, S - FRAME_INSET * 2, S - FRAME_INSET * 2);
-    ctx.clip();
-    if (state.image) {
-      drawCover(ctx, state.image, FRAME_INSET, FRAME_INSET, S - FRAME_INSET * 2, S - FRAME_INSET * 2);
-    } else {
-      drawPlaceholderPortrait(ctx, S);
-    }
-    ctx.restore();
-  } else if (useBrushImage) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(RING_CX, RING_CY, RING_INNER_R, 0, Math.PI * 2);
-    ctx.clip();
-    if (state.image) {
-      drawCover(ctx, state.image, RING_CX - RING_INNER_R, RING_CY - RING_INNER_R, RING_INNER_R * 2, RING_INNER_R * 2);
-    } else {
-      drawPlaceholderPortrait(ctx, S);
-    }
-    ctx.restore();
-  } else {
-    if (state.image) {
-      drawCover(ctx, state.image, 0, 0, S, S);
-    } else {
-      drawPlaceholderPortrait(ctx, S);
-    }
-  }
+    // ═══════════════════════════════════════════════
+    // CLASSIC TEMPLATE — matches desired-result.png
+    // ═══════════════════════════════════════════════
 
-  // ── 6. Vignette
-  if (!useRingImage && !useBrushImage) {
-    // Left edge
-    const leftV = ctx.createLinearGradient(0, 0, S * 0.22, 0);
-    leftV.addColorStop(0, "rgba(0,0,0,0.92)");
-    leftV.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = leftV;
-    ctx.fillRect(0, 0, S * 0.22, S);
-
-    // Right edge
-    const rightV = ctx.createLinearGradient(S, 0, S * 0.78, 0);
-    rightV.addColorStop(0, "rgba(0,0,0,0.92)");
-    rightV.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = rightV;
-    ctx.fillRect(S * 0.78, 0, S * 0.22, S);
-
-    // Top edge subtle darkening
-    const topV = ctx.createLinearGradient(0, 0, 0, S * 0.15);
-    topV.addColorStop(0, "rgba(0,0,0,0.55)");
-    topV.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = topV;
-    ctx.fillRect(0, 0, S, S * 0.15);
-  }
-
-  // Bottom fade into text area
-  const fadeStart = useRingImage ? S * 0.80 : S * 0.55;
-  const fadeEnd   = useRingImage ? S * 0.90 : S * 0.64;
-  const bottomFade = ctx.createLinearGradient(0, fadeStart, 0, fadeEnd);
-  bottomFade.addColorStop(0, "rgba(0,0,0,0)");
-  bottomFade.addColorStop(1, "rgba(0,0,0,1)");
-  ctx.fillStyle = bottomFade;
-  ctx.fillRect(0, fadeStart, S, fadeEnd - fadeStart);
-
-  // Solid black lower section for text
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, fadeEnd, S, S - fadeEnd);
-
-  // ── 7. Ring drawn on top of photo
-  if (useBrushImage) {
-    // brushstroke.png has a white background — multiply makes white transparent
-    ctx.save();
-    ctx.globalCompositeOperation = "multiply";
-    ctx.drawImage(brushstrokeImage, 0, 0, S, S);
-    ctx.restore();
-  } else if (useRingImage) {
-    // classic-ring.png has a white background — multiply makes white transparent
-    ctx.save();
-    ctx.globalCompositeOperation = "multiply";
+    // Layer 1: full-canvas background
     ctx.drawImage(classicRingImage, 0, 0, S, S);
-    ctx.restore();
-  } else if (tpl === "B") {
-    drawRingB(ctx, S);
-  } else {
-    drawRingA(ctx, S);
-  }
 
-  // ── 8. Logo badge (ring images already include it)
-  if (!useRingImage && !useBrushImage) {
+    // Layer 2: person photo (bg-removed preferred, else original) on right side
+    const photoSrc = state.processedImage || state.image;
+    const photoX = S * 0.35;
+    const photoW = S * 0.65;
+    const photoH = S;
+
+    if (photoSrc) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(photoX, 0, photoW, photoH);
+      ctx.clip();
+
+      // Scale to cover the full height; center horizontally within region
+      const srcAspect = photoSrc.width / photoSrc.height;
+      const tgtAspect = photoW / photoH;
+      let sx = 0, sy = 0, sw = photoSrc.width, sh = photoSrc.height;
+      if (srcAspect > tgtAspect) {
+        // source is wider — crop sides, show full height
+        sw = photoSrc.height * tgtAspect;
+        sx = (photoSrc.width - sw) / 2;
+      } else {
+        // source is taller — crop bottom, show from top (keeps head visible)
+        sh = photoSrc.width / tgtAspect;
+        sy = 0;
+      }
+      ctx.drawImage(photoSrc, sx, sy, sw, sh, photoX, 0, photoW, photoH);
+      ctx.restore();
+    } else {
+      drawPlaceholderPortrait(ctx, S);
+    }
+
+    // Layer 3: text block — left-aligned
+    const TX = S * 0.07;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+
+    // "MEMBER OF"
+    ctx.font = `800 ${S * 0.028}px Manrope, Avenir Next, sans-serif`;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("MEMBER OF", TX, S * 0.375);
+
+    // Gold divider under "MEMBER OF"
+    ctx.save();
+    ctx.strokeStyle = goldGradient(ctx, TX, S * 0.425, TX + S * 0.38, S * 0.425);
+    ctx.lineWidth = S * 0.0018;
+    ctx.beginPath();
+    ctx.moveTo(TX, S * 0.425);
+    ctx.lineTo(TX + S * 0.38, S * 0.425);
+    ctx.stroke();
+    ctx.restore();
+
+    // "THE 20" — large gold headline
+    ctx.save();
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgba(0,0,0,0.85)";
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 4;
+    ctx.font = `900 ${S * 0.11}px Montserrat, Arial Black, sans-serif`;
+    ctx.fillStyle = goldGradient(ctx, TX, S * 0.455, TX + S * 0.44, S * 0.575);
+    ctx.fillText("THE 20", TX, S * 0.515);
+    ctx.restore();
+
+    // Name
+    ctx.font = `900 ${S * 0.050}px Manrope, Avenir Next, sans-serif`;
+    ctx.fillStyle = GOLD.line;
+    ctx.fillText(name, TX, S * 0.625);
+
+    // Gold divider under name
+    ctx.save();
+    ctx.strokeStyle = goldGradient(ctx, TX, S * 0.665, TX + S * 0.36, S * 0.665);
+    ctx.lineWidth = S * 0.0018;
+    ctx.beginPath();
+    ctx.moveTo(TX, S * 0.665);
+    ctx.lineTo(TX + S * 0.36, S * 0.665);
+    ctx.stroke();
+    ctx.restore();
+
+    // Tagline
+    ctx.fillStyle = "#e8e4dc";
+    ctx.font = `500 ${S * 0.025}px Manrope, Avenir Next, sans-serif`;
+    ctx.fillText("The Leke Alder Fellows Program", TX, S * 0.725);
+    ctx.font = `500 ${S * 0.023}px Manrope, Avenir Next, sans-serif`;
+    ctx.fillText("for Kings, Priests, Masters & Creatives.", TX, S * 0.768);
+
+  } else {
+    // ═══════════════════════════════════════════════
+    // BRUSHSTROKE / FALLBACK TEMPLATES
+    // ═══════════════════════════════════════════════
+
+    const RING_CX     = S * 0.50;
+    const RING_CY     = S * 0.47;
+    const RING_INNER_R = S * 0.39;
+
+    // Subtle radial glow
+    const glow = ctx.createRadialGradient(S * 0.52, S * 0.34, S * 0.07, S * 0.52, S * 0.38, S * 0.55);
+    glow.addColorStop(0, "rgba(255,255,255,.07)");
+    glow.addColorStop(0.4, "rgba(20,20,18,.5)");
+    glow.addColorStop(1, "rgba(0,0,0,1)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, S, S);
+
+    // Halftone dot fields
+    drawHalftone(ctx, S, "left");
+    drawHalftone(ctx, S, "right");
+
+    // Gold ring fallback (no image)
+    if (tpl === "B" && !useBrushImage) drawRingB(ctx, S);
+    else if (!useBrushImage) drawRingA(ctx, S);
+
+    // Portrait photo
+    if (useBrushImage) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(RING_CX, RING_CY, RING_INNER_R, 0, Math.PI * 2);
+      ctx.clip();
+      if (state.image) {
+        drawCover(ctx, state.image, RING_CX - RING_INNER_R, RING_CY - RING_INNER_R, RING_INNER_R * 2, RING_INNER_R * 2);
+      } else {
+        drawPlaceholderPortrait(ctx, S);
+      }
+      ctx.restore();
+    } else {
+      if (state.image) drawCover(ctx, state.image, 0, 0, S, S);
+      else drawPlaceholderPortrait(ctx, S);
+    }
+
+    // Vignette (non-brushstroke only)
+    if (!useBrushImage) {
+      const leftV = ctx.createLinearGradient(0, 0, S * 0.22, 0);
+      leftV.addColorStop(0, "rgba(0,0,0,0.92)");
+      leftV.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = leftV;
+      ctx.fillRect(0, 0, S * 0.22, S);
+
+      const rightV = ctx.createLinearGradient(S, 0, S * 0.78, 0);
+      rightV.addColorStop(0, "rgba(0,0,0,0.92)");
+      rightV.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = rightV;
+      ctx.fillRect(S * 0.78, 0, S * 0.22, S);
+
+      const topV = ctx.createLinearGradient(0, 0, 0, S * 0.15);
+      topV.addColorStop(0, "rgba(0,0,0,0.55)");
+      topV.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = topV;
+      ctx.fillRect(0, 0, S, S * 0.15);
+    }
+
+    // Bottom fade + solid text area
+    const bottomFade = ctx.createLinearGradient(0, S * 0.55, 0, S * 0.64);
+    bottomFade.addColorStop(0, "rgba(0,0,0,0)");
+    bottomFade.addColorStop(1, "rgba(0,0,0,1)");
+    ctx.fillStyle = bottomFade;
+    ctx.fillRect(0, S * 0.55, S, S * 0.09);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, S * 0.64, S, S * 0.36);
+
+    // Brushstroke overlay
+    if (useBrushImage) {
+      ctx.save();
+      ctx.globalCompositeOperation = "multiply";
+      ctx.drawImage(brushstrokeImage, 0, 0, S, S);
+      ctx.restore();
+    }
+
+    // Logo badge
     const logoR = S * 0.09;
     drawLogo(ctx, S * 0.16, S * 0.16, logoR);
+
+    // Text — centered
+    const textOffset = useBrushImage ? S * 0.04 : 0;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    fillGoldText(ctx, name, S * 0.5, S * 0.666 + textOffset, S * 0.040, 900, S * 0.82);
+
+    ctx.save();
+    ctx.strokeStyle = goldGradient(ctx, S * 0.3, S * 0.696 + textOffset, S * 0.7, S * 0.696 + textOffset);
+    ctx.lineWidth = S * 0.0015;
+    ctx.beginPath();
+    ctx.moveTo(S * 0.305, S * 0.696 + textOffset);
+    ctx.lineTo(S * 0.695, S * 0.696 + textOffset);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.font = `800 ${S * 0.024}px Manrope, Avenir Next, sans-serif`;
+    ctx.fillStyle = GOLD.bright;
+    ctx.fillText("MEMBER OF", S * 0.5, S * 0.730 + textOffset);
+
+    fillGoldText(ctx, "THE 20", S * 0.5, S * 0.786 + textOffset, S * 0.072, 900, S * 0.6);
+
+    ctx.fillStyle = "#e8e4dc";
+    ctx.font = `600 ${S * 0.024}px Manrope, Avenir Next, sans-serif`;
+    ctx.fillText("The Leke Alder Fellows Program", S * 0.5, S * 0.840 + textOffset);
+    ctx.font = `600 ${S * 0.022}px Manrope, Avenir Next, sans-serif`;
+    ctx.fillText("for Kings, Priests, Masters & Creatives.", S * 0.5, S * 0.865 + textOffset);
   }
-
-  // ── 9. Name
-  const textOffset = useRingImage ? S * 0.22 : useBrushImage ? S * 0.04 : 0;
-  fillGoldText(ctx, name, S * 0.5, S * 0.666 + textOffset, S * 0.040, 900, S * 0.82);
-
-  // Divider line
-  ctx.save();
-  ctx.strokeStyle = goldGradient(ctx, S * 0.3, S * 0.696 + textOffset, S * 0.7, S * 0.696 + textOffset);
-  ctx.lineWidth = S * 0.0015;
-  ctx.beginPath();
-  ctx.moveTo(S * 0.305, S * 0.696 + textOffset);
-  ctx.lineTo(S * 0.695, S * 0.696 + textOffset);
-  ctx.stroke();
-  ctx.restore();
-
-  // "MEMBER OF"
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = `800 ${S * 0.024}px Manrope, Avenir Next, sans-serif`;
-  ctx.fillStyle = GOLD.bright;
-  ctx.fillText("MEMBER OF", S * 0.5, S * 0.730 + textOffset);
-
-  // "THE 20"
-  fillGoldText(ctx, "THE 20", S * 0.5, S * 0.786 + textOffset, S * 0.072, 900, S * 0.6);
-
-  // Tagline
-  ctx.fillStyle = "#e8e4dc";
-  ctx.font = `600 ${S * 0.024}px Manrope, Avenir Next, sans-serif`;
-  ctx.fillText("The Leke Alder Fellows Program", S * 0.5, S * 0.840 + textOffset);
-  ctx.font = `600 ${S * 0.022}px Manrope, Avenir Next, sans-serif`;
-  ctx.fillText("for Kings, Priests, Masters & Creatives.", S * 0.5, S * 0.865 + textOffset);
 }
 
 function renderAll() {
