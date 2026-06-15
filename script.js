@@ -399,20 +399,36 @@ function drawPlaceholderPortrait(ctx, S) {
   ctx.restore();
 }
 
+// Classic template output dimensions (matches classic-ring.png aspect ratio)
+const CLASSIC_W = 1540;
+const CLASSIC_H = 980;
+// Brushstroke template output dimensions (square)
+const BRUSH_S = 1080;
+
 function renderAvatar(canvas, templateOverride) {
   const ctx = canvas.getContext("2d");
-  const S = canvas.width; // square canvas
   const name = state.name.trim().toUpperCase() || "YOUR NAME";
   const tpl = templateOverride || state.template;
 
   const useRingImage  = tpl === "A" && classicRingImage.complete && classicRingImage.naturalWidth > 0;
   const useBrushImage = tpl === "B" && brushstrokeImage.complete && brushstrokeImage.naturalWidth > 0;
 
-  ctx.clearRect(0, 0, S, S);
+  // Resize canvas to match the template's native aspect ratio
+  const isClassic = tpl === "A";
+  const W = isClassic ? CLASSIC_W : BRUSH_S;
+  const H = isClassic ? CLASSIC_H : BRUSH_S;
+  const S = H; // shorthand for the shorter dimension (used by brushstroke template)
+
+  if (canvas.width !== W || canvas.height !== H) {
+    canvas.width = W;
+    canvas.height = H;
+  }
+
+  ctx.clearRect(0, 0, W, H);
 
   // ── 1. Black background
   ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, S, S);
+  ctx.fillRect(0, 0, W, H);
 
   if (useRingImage) {
     // ═══════════════════════════════════════════════
@@ -420,87 +436,71 @@ function renderAvatar(canvas, templateOverride) {
     // ═══════════════════════════════════════════════
 
     // Layer 1: full-canvas background
-    ctx.drawImage(classicRingImage, 0, 0, S, S);
+    ctx.drawImage(classicRingImage, 0, 0, W, H);
 
     // Layer 2: person photo (bg-removed preferred, else original) on right side
     const photoSrc = state.processedImage || state.image;
-    const photoX = S * 0.35;
-    const photoW = S * 0.65;
-    const photoH = S;
 
     if (photoSrc) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(photoX, 0, photoW, photoH);
-      ctx.clip();
-
-      // Scale to cover the full height; center horizontally within region
-      const srcAspect = photoSrc.width / photoSrc.height;
-      const tgtAspect = photoW / photoH;
-      let sx = 0, sy = 0, sw = photoSrc.width, sh = photoSrc.height;
-      if (srcAspect > tgtAspect) {
-        // source is wider — crop sides, show full height
-        sw = photoSrc.height * tgtAspect;
-        sx = (photoSrc.width - sw) / 2;
-      } else {
-        // source is taller — crop bottom, show from top (keeps head visible)
-        sh = photoSrc.width / tgtAspect;
-        sy = 0;
-      }
-      ctx.drawImage(photoSrc, sx, sy, sw, sh, photoX, 0, photoW, photoH);
-      ctx.restore();
+      // Scale to fill the full canvas height without cropping.
+      // Width is proportional; right-align so the person anchors to the right edge.
+      // Transparent areas (after bg removal) reveal the template below.
+      const drawH = H;
+      const drawW = (photoSrc.width / photoSrc.height) * drawH;
+      const drawX = W - drawW; // right-align; canvas clips anything left of 0
+      ctx.drawImage(photoSrc, 0, 0, photoSrc.width, photoSrc.height, drawX, 0, drawW, drawH);
     } else {
-      drawPlaceholderPortrait(ctx, S);
+      drawPlaceholderPortrait(ctx, H);
     }
 
-    // Layer 3: text block — left-aligned
-    const TX = S * 0.07;
+    // Layer 3: text block — left-aligned, positioned relative to H (shorter dimension)
+    const TX = W * 0.045;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
 
     // "MEMBER OF"
-    ctx.font = `800 ${S * 0.038}px Manrope, Avenir Next, sans-serif`;
+    ctx.font = `800 ${H * 0.054}px Manrope, Avenir Next, sans-serif`;
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "center";
-    ctx.fillText("MEMBER OF", TX + S * 0.19, S * 0.375);
+    ctx.fillText("MEMBER OF", TX + W * 0.13, H * 0.375);
     ctx.textAlign = "left";
 
     // Gold divider under "MEMBER OF"
     ctx.save();
-    ctx.strokeStyle = goldGradient(ctx, TX, S * 0.425, TX + S * 0.38, S * 0.425);
-    ctx.lineWidth = S * 0.0018;
+    ctx.strokeStyle = goldGradient(ctx, TX, H * 0.440, TX + W * 0.27, H * 0.440);
+    ctx.lineWidth = H * 0.0025;
     ctx.beginPath();
-    ctx.moveTo(TX, S * 0.425);
-    ctx.lineTo(TX + S * 0.38, S * 0.425);
+    ctx.moveTo(TX, H * 0.440);
+    ctx.lineTo(TX + W * 0.27, H * 0.440);
     ctx.stroke();
     ctx.restore();
 
     // "THE 20" — large flat gold
-    ctx.font = `900 ${S * 0.085}px Montserrat, Arial Black, sans-serif`;
+    ctx.font = `900 ${H * 0.130}px Montserrat, Arial Black, sans-serif`;
     ctx.fillStyle = GOLD.line;
-    ctx.fillText("THE 20", TX, S * 0.515);
+    ctx.fillText("THE 20", TX, H * 0.570);
 
     // Name
-    ctx.font = `900 ${S * 0.050}px Manrope, Avenir Next, sans-serif`;
+    ctx.font = `900 ${H * 0.072}px Manrope, Avenir Next, sans-serif`;
     ctx.fillStyle = GOLD.line;
-    ctx.fillText(name, TX, S * 0.625);
+    ctx.fillText(name, TX, H * 0.700);
 
     // Gold divider under name
     ctx.save();
-    ctx.strokeStyle = goldGradient(ctx, TX, S * 0.665, TX + S * 0.36, S * 0.665);
-    ctx.lineWidth = S * 0.0018;
+    ctx.strokeStyle = goldGradient(ctx, TX, H * 0.770, TX + W * 0.25, H * 0.770);
+    ctx.lineWidth = H * 0.0025;
     ctx.beginPath();
-    ctx.moveTo(TX, S * 0.665);
-    ctx.lineTo(TX + S * 0.36, S * 0.665);
+    ctx.moveTo(TX, H * 0.770);
+    ctx.lineTo(TX + W * 0.25, H * 0.770);
     ctx.stroke();
     ctx.restore();
 
     // Tagline
     ctx.fillStyle = "#e8e4dc";
-    ctx.font = `500 ${S * 0.025}px Manrope, Avenir Next, sans-serif`;
-    ctx.fillText("The Leke Alder Fellows Program", TX, S * 0.725);
-    ctx.font = `500 ${S * 0.023}px Manrope, Avenir Next, sans-serif`;
-    ctx.fillText("for Kings, Priests, Masters & Creatives.", TX, S * 0.768);
+    ctx.font = `500 ${H * 0.036}px Manrope, Avenir Next, sans-serif`;
+    ctx.fillText("The Leke Alder Fellows Program", TX, H * 0.843);
+    ctx.font = `500 ${H * 0.033}px Manrope, Avenir Next, sans-serif`;
+    ctx.fillText("for Kings, Priests, Masters & Creatives.", TX, H * 0.900);
 
   } else {
     // ═══════════════════════════════════════════════
