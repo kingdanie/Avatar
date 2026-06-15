@@ -375,6 +375,8 @@ function renderAvatar(canvas, templateOverride) {
   const RING_CX = S * 0.50;
   const RING_CY = S * 0.47;
   const RING_INNER_R = S * 0.39;
+  // Classic ring is now a square frame — inner photo area inset from each edge
+  const FRAME_INSET = S * 0.04;
   const useRingImage   = tpl === "A" && classicRingImage.complete && classicRingImage.naturalWidth > 0;
   const useBrushImage  = tpl === "B" && brushstrokeImage.complete && brushstrokeImage.naturalWidth > 0;
 
@@ -400,8 +402,19 @@ function renderAvatar(canvas, templateOverride) {
   if (tpl === "B" && !useBrushImage) drawRingB(ctx, S);
   else if (tpl === "A" && !useRingImage) drawRingA(ctx, S);
 
-  // ── 5. Portrait photo — clipped to ring interior when using an image template
-  if (useRingImage || useBrushImage) {
+  // ── 5. Portrait photo — clipped to frame interior when using an image template
+  if (useRingImage) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(FRAME_INSET, FRAME_INSET, S - FRAME_INSET * 2, S - FRAME_INSET * 2);
+    ctx.clip();
+    if (state.image) {
+      drawCover(ctx, state.image, FRAME_INSET, FRAME_INSET, S - FRAME_INSET * 2, S - FRAME_INSET * 2);
+    } else {
+      drawPlaceholderPortrait(ctx, S);
+    }
+    ctx.restore();
+  } else if (useBrushImage) {
     ctx.save();
     ctx.beginPath();
     ctx.arc(RING_CX, RING_CY, RING_INNER_R, 0, Math.PI * 2);
@@ -444,16 +457,18 @@ function renderAvatar(canvas, templateOverride) {
     ctx.fillRect(0, 0, S, S * 0.15);
   }
 
-  // Bottom fade into text area (applies to both templates)
-  const bottomFade = ctx.createLinearGradient(0, S * 0.55, 0, S * 0.64);
+  // Bottom fade into text area
+  const fadeStart = useRingImage ? S * 0.80 : S * 0.55;
+  const fadeEnd   = useRingImage ? S * 0.90 : S * 0.64;
+  const bottomFade = ctx.createLinearGradient(0, fadeStart, 0, fadeEnd);
   bottomFade.addColorStop(0, "rgba(0,0,0,0)");
   bottomFade.addColorStop(1, "rgba(0,0,0,1)");
   ctx.fillStyle = bottomFade;
-  ctx.fillRect(0, S * 0.55, S, S * 0.09);
+  ctx.fillRect(0, fadeStart, S, fadeEnd - fadeStart);
 
   // Solid black lower section for text
   ctx.fillStyle = "#000";
-  ctx.fillRect(0, S * 0.64, S, S * 0.36);
+  ctx.fillRect(0, fadeEnd, S, S - fadeEnd);
 
   // ── 7. Ring drawn on top of photo
   if (useBrushImage) {
@@ -463,9 +478,9 @@ function renderAvatar(canvas, templateOverride) {
     ctx.drawImage(brushstrokeImage, 0, 0, S, S);
     ctx.restore();
   } else if (useRingImage) {
-    // classic-ring.png has a black background — screen makes black transparent
+    // classic-ring.png has a white background — multiply makes white transparent
     ctx.save();
-    ctx.globalCompositeOperation = "screen";
+    ctx.globalCompositeOperation = "multiply";
     ctx.drawImage(classicRingImage, 0, 0, S, S);
     ctx.restore();
   } else if (tpl === "B") {
@@ -481,7 +496,7 @@ function renderAvatar(canvas, templateOverride) {
   }
 
   // ── 9. Name
-  const textOffset = useBrushImage ? S * 0.04 : 0;
+  const textOffset = useRingImage ? S * 0.22 : useBrushImage ? S * 0.04 : 0;
   fillGoldText(ctx, name, S * 0.5, S * 0.666 + textOffset, S * 0.040, 900, S * 0.82);
 
   // Divider line
